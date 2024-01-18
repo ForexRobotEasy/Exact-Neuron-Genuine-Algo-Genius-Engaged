@@ -1,0 +1,130 @@
+mql5
+//+------------------------------------------------------------------+
+//|                              ENAGEA.mq5                          |
+//|           Copyright 2022, Forex Robot Easy Team, forexroboteasy.com|
+//+------------------------------------------------------------------+
+
+//--- Include necessary libraries
+#include <Trade\Trade.mqh>
+
+//--- Define input parameters
+input int StopLoss = 50;  // Stop loss in pips
+input int TakeProfit = 100;  // Take profit in pips
+input double LotSize = 0.1;  // Lot size for trading
+input double MaxSpread = 3.0;  // Maximum allowed spread in points
+
+//--- Declare global variables
+CTrade Trade;  // Trade object for executing trades
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    //--- Set maximum allowed spread
+    Trade.SetDeviationInPoints(MaxSpread);
+
+    //--- Print initialization message
+    Print('ENAGEA Expert Advisor initialized');
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    //--- Print deinitialization message
+    Print('ENAGEA Expert Advisor deinitialized');
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    //--- Get the current market price
+    double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+    //--- Calculate stop loss and take profit levels
+    double stopLossLevel = currentPrice - StopLoss * _Point;
+    double takeProfitLevel = currentPrice + TakeProfit * _Point;
+
+    //--- Check if there is an open position
+    if (Trade.PositionSelect(_Symbol))
+    {
+        //--- Get the position type
+        ENUM_POSITION_TYPE positionType = Trade.PositionGetInteger(POSITION_TYPE);
+
+        //--- Check if the position is a buy position
+        if (positionType == POSITION_TYPE_BUY)
+        {
+            //--- Check if the current price is below the stop loss level
+            if (currentPrice < stopLossLevel)
+            {
+                //--- Close the position with a loss
+                Trade.PositionClose(_Symbol);
+            }
+            //--- Check if the current price is above the take profit level
+            else if (currentPrice > takeProfitLevel)
+            {
+                //--- Close the position with a profit
+                Trade.PositionClose(_Symbol);
+            }
+        }
+        //--- Check if the position is a sell position
+        else if (positionType == POSITION_TYPE_SELL)
+        {
+            //--- Check if the current price is above the stop loss level
+            if (currentPrice > stopLossLevel)
+            {
+                //--- Close the position with a loss
+                Trade.PositionClose(_Symbol);
+            }
+            //--- Check if the current price is below the take profit level
+            else if (currentPrice < takeProfitLevel)
+            {
+                //--- Close the position with a profit
+                Trade.PositionClose(_Symbol);
+            }
+        }
+    }
+    else
+    {
+        //--- Check if the current price is above the take profit level
+        if (currentPrice > takeProfitLevel)
+        {
+            //--- Open a buy position
+            Trade.PositionOpen(_Symbol, POSITION_TYPE_BUY, LotSize, currentPrice, stopLossLevel, takeProfitLevel);
+        }
+        //--- Check if the current price is below the stop loss level
+        else if (currentPrice < stopLossLevel)
+        {
+            //--- Open a sell position
+            Trade.PositionOpen(_Symbol, POSITION_TYPE_SELL, LotSize, currentPrice, stopLossLevel, takeProfitLevel);
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Expert start function                                            |
+//+------------------------------------------------------------------+
+void OnStart()
+{
+    //--- Print start message
+    Print('ENAGEA Expert Advisor started');
+
+    //--- Loop until the EA is stopped
+    while (!IsStopped())
+    {
+        //--- Call the tick function on each tick
+        OnTick();
+
+        //--- Sleep for 1 second
+        Sleep(1000);
+    }
+
+    //--- Print stop message
+    Print('ENAGEA Expert Advisor stopped');
+}
